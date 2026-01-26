@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -14,6 +15,7 @@ import (
 
 type AuthHandler struct {
 	userRepo   models.UserRepository
+	configRepo *database.ConfigRepo
 	jwtService *auth.JWTService
 	validator  *validator.Validate
 }
@@ -65,9 +67,13 @@ type UserResponse struct {
 	Is2FAEnabled bool       `json:"is_2fa_enabled"`
 }
 
+const defaultAccessTokenTTL = 900 // 15 minutes
+
 func NewAuthHandler(userRepo models.UserRepository) *AuthHandler {
+	configRepo := database.NewConfigRepo(database.DB)
 	return &AuthHandler{
 		userRepo:   userRepo,
+		configRepo: configRepo,
 		jwtService: auth.NewJWTService(),
 		validator:  validator.New(),
 	}
@@ -97,7 +103,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	configRepo := database.NewConfigRepo(database.DB)
 	userCount, err := h.userRepo.CountUsers()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user count"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user count"})  
 		return
 	}
 	if userCount > 0 {
@@ -136,7 +142,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Generate tokens
-	tokenPair, err := h.jwtService.GenerateTokenPair(user)
+	accessTokenTTL := defaultAccessTokenTTL
+
+	ttlStr, err := h.configRepo.Get("access_token_ttl")
+	if err == nil && ttlStr != "" {
+		if parsedTTL, convErr := strconv.Atoi(ttlStr); convErr == nil && parsedTTL > 0 {
+			accessTokenTTL = parsedTTL
+		}
+	}
+
+	tokenPair, err := h.jwtService.GenerateTokenPair(user, accessTokenTTL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
 		return
@@ -238,7 +253,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	h.userRepo.UpdateUser(user)
 
 	// Generate tokens
-	tokenPair, err := h.jwtService.GenerateTokenPair(user)
+	accessTokenTTL := defaultAccessTokenTTL
+	ttlStr, err := h.configRepo.Get("access_token_ttl")
+	if err == nil && ttlStr != "" {
+		if parsedTTL, convErr := strconv.Atoi(ttlStr); convErr == nil && parsedTTL > 0 {
+			accessTokenTTL = parsedTTL
+		}
+	}
+	tokenPair, err := h.jwtService.GenerateTokenPair(user, accessTokenTTL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
 		return
@@ -287,7 +309,15 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	// Generate new tokens
-	tokenPair, err := h.jwtService.GenerateTokenPair(&session.User)
+	accessTokenTTL := defaultAccessTokenTTL
+	ttlStr, err := h.configRepo.Get("access_token_ttl")
+	if err == nil && ttlStr != "" {
+		if parsedTTL, convErr := strconv.Atoi(ttlStr); convErr == nil && parsedTTL > 0 {
+			accessTokenTTL = parsedTTL
+		}
+	}
+	tokenPair, err := h.jwtService.GenerateTokenPair(&session.User, accessTokenTTL)
+	
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
 		return

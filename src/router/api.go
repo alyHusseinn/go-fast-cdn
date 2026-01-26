@@ -109,6 +109,8 @@ func (s *Server) AddApiRoutes() {
 		configHandler := handlers.NewConfigHandler(database.NewConfigRepo(database.DB))
 		adminRoutes.GET("/config/registration", configHandler.GetRegistrationEnabled)
 		adminRoutes.POST("/config/registration", configHandler.SetRegistrationEnabled)
+		adminRoutes.GET("/config/access_token_ttl", configHandler.GetAccessTokenTTL)
+		adminRoutes.POST("/config/access_token_ttl", configHandler.SetAccessTokenTTL)
 	}
 
 	// Public config endpoint for registration status

@@ -40,9 +40,12 @@ func NewJWTService() *JWTService {
 }
 
 // GenerateTokenPair creates both access and refresh tokens
-func (j *JWTService) GenerateTokenPair(user *models.User) (*TokenPair, error) {
+func (j *JWTService) GenerateTokenPair(user *models.User, ttl int) (*TokenPair, error) {
 	// Generate access token (short-lived)
-	accessToken, err := j.GenerateAccessToken(user)
+	if ttl <= 0 || ttl > 1440 {
+		ttl = 15 // default to 15 minutes
+	}
+	accessToken, err := j.GenerateAccessToken(user, ttl)
 	if err != nil {
 		return nil, err
 	}
@@ -52,33 +55,21 @@ func (j *JWTService) GenerateTokenPair(user *models.User) (*TokenPair, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Get expiration time from environment or default to 15 minutes
-	expiresInStr := os.Getenv("JWT_EXPIRES_IN")
-	expiresIn := int64(15 * 60) // 15 minutes default
-	if expiresInStr != "" {
-		if parsed, err := strconv.ParseInt(expiresInStr, 10, 64); err == nil {
-			expiresIn = parsed
-		}
-	}
-
 	return &TokenPair{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresIn:    expiresIn,
+		ExpiresIn:    int64(ttl),
 	}, nil
 }
 
 // GenerateAccessToken creates a JWT access token
-func (j *JWTService) GenerateAccessToken(user *models.User) (string, error) {
-	// Get expiration time from environment or default to 15 minutes
-	expiresInStr := os.Getenv("JWT_EXPIRES_IN")
-	expiresIn := time.Minute * 15 // 15 minutes default
-	if expiresInStr != "" {
-		if parsed, err := strconv.ParseInt(expiresInStr, 10, 64); err == nil {
-			expiresIn = time.Duration(parsed) * time.Second
-		}
+func (j *JWTService) GenerateAccessToken(user *models.User, ttl int) (string, error) {
+
+    if ttl <= 0 || ttl > 1440 {
+		ttl = 15 // default to 15 minutes
 	}
+
+	expiresIn := time.Duration(ttl) * time.Minute
 
 	claims := &Claims{
 		UserID: user.ID,

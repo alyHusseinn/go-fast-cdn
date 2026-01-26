@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { TUser } from "@/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AccessTokenTTLModal from "./modal/access-token-ttl-modal";
 import FormUserModal from "./modal/form-user-modal";
 import DeleteUserConfirmModal from "./modal/delete-user-confirm-modal";
 import useRegistrationEnabledQuery from "./hooks/use-registration-enabled-query";
@@ -34,6 +35,7 @@ const UserManagementPage = () => {
   const [mode, setMode] = useState<"create" | "edit">("create");
 
   const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
+  const [accessTokenTTLModalOpen, setAccessTokenTTLModalOpen] = useState(false);
 
   const [search, setSearch] = useState("");
   const [debounceSearch, setDebounceSearch] = useState("");
@@ -284,6 +286,12 @@ const UserManagementPage = () => {
           <section className="flex items-center gap-2">
             {defineButtonState}
             <Button
+              variant="outline"
+              onClick={() => setAccessTokenTTLModalOpen(true)}
+            >
+              Adjust Access Token TTL
+            </Button>
+            <Button
               onClick={() => {
                 setMode("create");
                 setFormModalOpen(true);
@@ -308,6 +316,10 @@ const UserManagementPage = () => {
         isOpen={deleteConfirmModalOpen}
         setOpen={setDeleteConfirmModalOpen}
         id={selectedData?.id || 0}
+      />
+      <AccessTokenTTLModal
+        isOpen={accessTokenTTLModalOpen}
+        setOpen={setAccessTokenTTLModalOpen}
       />
     </MainContentWrapper>
   );

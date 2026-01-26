@@ -81,6 +81,10 @@ func (h *DashboardHandler) GetDashboard(c *gin.Context) {
 	}
 
 	regEnabled, _ := h.ConfigRepo.Get("registration_enabled")
+	accessTokenTTL, err := h.ConfigRepo.Get("access_token_ttl");
+	if accessTokenTTL == "" || err != nil {
+		accessTokenTTL = "15" // default 15 minutes
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"files": gin.H{
@@ -97,6 +101,7 @@ func (h *DashboardHandler) GetDashboard(c *gin.Context) {
 		},
 		"config": gin.H{
 			"registration_enabled": regEnabled == "true",
+			"access_token_ttl": accessTokenTTL,
 		},
 		"security": gin.H{
 			"users_with_2fa": usersWith2FA,
